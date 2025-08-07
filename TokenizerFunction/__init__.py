@@ -2,67 +2,45 @@ import azure.functions as func
 import json
 import logging
 import os
-from transformers import AutoTokenizer
-from typing import Optional, Dict, Any
 
-# Global tokenizer cache to avoid reloading
-_tokenizer_cache = {}
-
-def get_tokenizer(model_name: str) -> AutoTokenizer:
-    """Get or load tokenizer with caching"""
-    if model_name not in _tokenizer_cache:
-        try:
-            logging.info(f"Loading tokenizer for model: {model_name}")
-            _tokenizer_cache[model_name] = AutoTokenizer.from_pretrained(model_name)
-            logging.info(f"Successfully loaded tokenizer for {model_name}")
-        except Exception as e:
-            logging.error(f"Failed to load tokenizer for {model_name}: {str(e)}")
-            raise e
-    return _tokenizer_cache[model_name]
-
-def tokenize_text(text: str, model_name: str, options: Dict[str, Any] = None) -> Dict[str, Any]:
-    """Tokenize text using the specified model"""
-    if options is None:
-        options = {}
-    
+def simple_tokenize_text(text: str, model: str = "simple", return_tokens: bool = True, return_token_ids: bool = True) -> dict:
+    """Simple word-based tokenization for testing"""
     try:
-        tokenizer = get_tokenizer(model_name)
+        # Simple word tokenization (split by spaces and punctuation)
+        import re
+        tokens = re.findall(r'\b\w+\b|\S', text)
+        token_ids = [hash(token) % 50257 for token in tokens]  # Simple hash-based IDs
         
-        # Tokenize the text
-        tokens = tokenizer.tokenize(text)
-        token_ids = tokenizer.encode(text, add_special_tokens=options.get('add_special_tokens', True))
-        
-        # Additional tokenizer information
         result = {
             "success": True,
-            "model": model_name,
+            "model": model,
             "text": text,
-            "tokens": tokens,
-            "token_ids": token_ids,
-            "token_count": len(token_ids),
-            "vocab_size": tokenizer.vocab_size,
+            "token_count": len(tokens),
+            "vocab_size": 50257,
             "special_tokens": {
-                "pad_token": tokenizer.pad_token,
-                "unk_token": tokenizer.unk_token,
-                "cls_token": getattr(tokenizer, 'cls_token', None),
-                "sep_token": getattr(tokenizer, 'sep_token', None),
-                "mask_token": getattr(tokenizer, 'mask_token', None)
-            }
+                "pad_token": "<PAD>",
+                "unk_token": "<UNK>",
+                "cls_token": None,
+                "sep_token": None,
+                "mask_token": None
+            },
+            "note": "This is a simple tokenizer for testing. Full transformers integration coming soon."
         }
         
-        # Optional: decode tokens back to verify
-        if options.get('include_decoded', False):
-            decoded_text = tokenizer.decode(token_ids)
-            result["decoded_text"] = decoded_text
-            
+        # Add tokens and token_ids based on request parameters
+        if return_tokens:
+            result["tokens"] = tokens
+        if return_token_ids:
+            result["token_ids"] = token_ids
+        
         return result
         
     except Exception as e:
-        logging.error(f"Tokenization failed: {str(e)}")
+        logging.error(f"Simple tokenization failed: {str(e)}")
         return {
             "success": False,
             "error": str(e),
-            "model": model_name,
+            "model": model,
             "text": text
         }
 
@@ -71,26 +49,21 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     logging.info('Python HTTP trigger function processed a request.')
     
     try:
-        # Get the request method
         method = req.method
         
         if method == "GET":
-            # GET request - return API information
-            default_model = os.environ.get('DEFAULT_MODEL', 'openai/gpt-oss-120b')
+            default_model = os.environ.get('DEFAULT_MODEL', 'simple')
             return func.HttpResponse(
                 json.dumps({
-                    "message": "Tokenizer API is running",
+                    "message": "Simple Tokenizer API is running",
+                    "status": "TESTING MODE - Transformers not yet installed",
                     "default_model": default_model,
                     "supported_methods": ["GET", "POST"],
                     "usage": {
-                        "POST": "/api/TokenizerFunction",
+                        "POST": "/api/tokenizerfunction",
                         "body": {
                             "text": "Text to tokenize (required)",
-                            "model": f"Model name (optional, default: {default_model})",
-                            "options": {
-                                "add_special_tokens": "bool (optional, default: True)",
-                                "include_decoded": "bool (optional, default: False)"
-                            }
+                            "model": "Model name (optional, currently using simple tokenizer)"
                         }
                     }
                 }, indent=2),
@@ -99,7 +72,6 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             )
         
         elif method == "POST":
-            # POST request - perform tokenization
             try:
                 req_body = req.get_json()
                 if not req_body:
@@ -109,7 +81,6 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
                         status_code=400
                     )
                 
-                # Extract parameters
                 text = req_body.get('text', '')
                 if not text:
                     return func.HttpResponse(
@@ -118,11 +89,13 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
                         status_code=400
                     )
                 
-                model_name = req_body.get('model', os.environ.get('DEFAULT_MODEL', 'openai/gpt-oss-120b'))
-                options = req_body.get('options', {})
+                # Accept both 'model' and 'model_name' parameters for compatibility
+                model_name = req_body.get('model_name') or req_body.get('model', 'simple')
+                return_tokens = req_body.get('return_tokens', True)
+                return_token_ids = req_body.get('return_token_ids', True)
                 
-                # Perform tokenization
-                result = tokenize_text(text, model_name, options)
+                # Use simple tokenization for now
+                result = simple_tokenize_text(text, model_name, return_tokens, return_token_ids)
                 
                 status_code = 200 if result.get('success') else 500
                 return func.HttpResponse(
@@ -138,9 +111,9 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
                     status_code=400
                 )
             except Exception as e:
-                logging.error(f"Unexpected error: {str(e)}")
+                logging.error(f"POST request error: {str(e)}")
                 return func.HttpResponse(
-                    json.dumps({"error": f"Internal server error: {str(e)}"}),
+                    json.dumps({"error": f"Request processing failed: {str(e)}"}),
                     mimetype="application/json",
                     status_code=500
                 )

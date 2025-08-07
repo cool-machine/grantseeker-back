@@ -32,7 +32,7 @@ appsettings.json
 local.settings.json
 
 # IDE
-.vscode/
+
 .idea/
 *.swp
 *.swo
@@ -46,3 +46,4 @@ Thumbs.db
 
 # Azure
 .azure/
+.python_packages

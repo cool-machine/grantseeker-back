@@ -1,11 +1,5 @@
 # Azure Functions
 azure-functions>=1.23.0
 
-# Hugging Face Transformers (lightweight)
-transformers>=4.40.0
-tokenizers>=0.15.0
-numpy>=1.21.0
+# Basic dependencies for now
 requests>=2.28.0
-
-# Utilities
-python-dotenv>=1.0.0
