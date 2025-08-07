@@ -31,8 +31,8 @@ az storage account create \
     --sku Standard_LRS \
     --only-show-errors || echo "Storage account may already exist"
 
-# Create Function App
-echo "⚡ Creating Function App..."
+# Create Function App (Consumption Plan - FREE TIER)
+echo "⚡ Creating Function App with Consumption Plan (FREE)..."
 az functionapp create \
     --resource-group $RESOURCE_GROUP \
     --consumption-plan-location $LOCATION \
@@ -42,6 +42,7 @@ az functionapp create \
     --name $FUNCTION_APP_NAME \
     --storage-account $STORAGE_ACCOUNT_NAME \
     --os-type linux \
+    --disable-app-insights \
     --only-show-errors
 
 # Set application settings
