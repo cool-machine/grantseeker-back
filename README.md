@@ -5,7 +5,7 @@ This Azure Function provides HTTP-triggered tokenization services using Hugging 
 ## Features
 
 - **HTTP API**: GET for info, POST for tokenization
-- **Default Model**: `openai/gpt-oss-120b` (configurable)
+- **Default Model**: `gpt2` (configurable via `DEFAULT_MODEL`)
 - **Flexible Models**: Supports any Hugging Face transformers model
 - **Caching**: Tokenizer caching for better performance
 - **Detailed Output**: Tokens, token IDs, counts, and special tokens
@@ -73,7 +73,7 @@ curl -X POST https://your-function-app.azurewebsites.net/api/TokenizerFunction \
   -H "Content-Type: application/json" \
   -d '{
     "text": "Hello, world! How are you today?",
-    "model": "openai/gpt-oss-120b",
+    "model": "gpt2",
     "options": {
       "add_special_tokens": true,
       "include_decoded": false
@@ -86,7 +86,7 @@ curl -X POST https://your-function-app.azurewebsites.net/api/TokenizerFunction \
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `text` | string | Yes | Text to tokenize |
-| `model` | string | No | HuggingFace model name (default: `openai/gpt-oss-120b`) |
+| `model` | string | No | HuggingFace model name (default: `gpt2`) |
 | `options.add_special_tokens` | boolean | No | Add special tokens (default: true) |
 | `options.include_decoded` | boolean | No | Include decoded text in response (default: false) |
 
@@ -95,7 +95,7 @@ curl -X POST https://your-function-app.azurewebsites.net/api/TokenizerFunction \
 ```json
 {
   "success": true,
-  "model": "openai/gpt-oss-120b",
+  "model": "gpt2",
   "text": "Hello, world!",
   "tokens": ["Hello", ",", " world", "!"],
   "token_ids": [15496, 11, 1917, 0],
@@ -117,7 +117,7 @@ curl -X POST https://your-function-app.azurewebsites.net/api/TokenizerFunction \
 
 Set these in Azure Function App Configuration:
 
-- `DEFAULT_MODEL`: Default tokenizer model (default: `openai/gpt-oss-120b`)
+- `DEFAULT_MODEL`: Default tokenizer model (default: `gpt2`)
 - `HUGGINGFACE_TOKEN`: HuggingFace API token (optional, for private models)
 
 ### Local Development Settings
@@ -130,7 +130,7 @@ Edit `local.settings.json`:
   "Values": {
     "AzureWebJobsStorage": "UseDevelopmentStorage=true",
     "FUNCTIONS_WORKER_RUNTIME": "python",
-    "DEFAULT_MODEL": "openai/gpt-oss-120b",
+    "DEFAULT_MODEL": "gpt2",
     "HUGGINGFACE_TOKEN": "your_token_here"
   }
 }
@@ -140,7 +140,6 @@ Edit `local.settings.json`:
 
 Any model from Hugging Face transformers library, including:
 
-- `openai/gpt-oss-120b` (default)
 - `gpt2`
 - `microsoft/DialoGPT-medium`
 - `facebook/blenderbot-400M-distill`
