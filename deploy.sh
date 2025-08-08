@@ -50,7 +50,7 @@ echo "⚙️ Configuring application settings..."
 az functionapp config appsettings set \
     --resource-group $RESOURCE_GROUP \
     --name $FUNCTION_APP_NAME \
-    --settings "DEFAULT_MODEL=openai/gpt-oss-120b" \
+    --settings "DEFAULT_MODEL=gpt2" \
     --only-show-errors
 
 # Deploy function code
@@ -63,4 +63,4 @@ echo ""
 echo "🧪 Test with:"
 echo "GET  https://$FUNCTION_APP_NAME.azurewebsites.net/api/TokenizerFunction"
 echo "POST https://$FUNCTION_APP_NAME.azurewebsites.net/api/TokenizerFunction"
-echo "     Body: {\"text\": \"Hello world\", \"model\": \"openai/gpt-oss-120b\"}"
+echo "     Body: {\"text\": \"Hello world\", \"model\": \"gpt2\"}"
