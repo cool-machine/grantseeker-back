@@ -1,5 +1,13 @@
-# Azure Functions
+# Azure Functions v2
 azure-functions>=1.23.0
 
-# Basic dependencies for now
+# Azure SDK v2 packages
+azure-openai==1.52.0
+azure-storage-blob==12.24.0
+azure-cosmos==4.8.0
+azure-identity==1.19.0
+
+# Basic dependencies
 requests>=2.28.0
+json
+re

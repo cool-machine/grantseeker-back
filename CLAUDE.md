@@ -128,7 +128,7 @@ npx @azure/static-web-apps-cli deploy --app-location ./dist --deployment-token "
 4. **Missing Assets**: vite.svg 404 errors
    - **Solution**: Removed reference from index.html
 
-## 📊 Current Status (WORKING ✅)
+## 📊 Current Status (ENHANCED ✅)
 
 ### Backend
 - ✅ Azure Function deployed and responsive
@@ -148,12 +148,60 @@ npx @azure/static-web-apps-cli deploy --app-location ./dist --deployment-token "
 - ✅ All code pushed to GitHub repositories
 - ✅ Deployments automated and documented
 
+## 🆕 NEW: Azure OpenAI Integration (Azure SDK v2)
+
+### Enhanced Functions Added
+- **ProcessDocument** (`/api/processdocument`) - Document analysis with GPT-3.5-Turbo
+- **AnalyzeGrant** (`/api/analyzegrant`) - Grant opportunity analysis
+- **GetMatches** (`/api/getmatches`) - AI-powered grant matching
+
+### Azure SDK v2 Stack
+- **azure-openai==1.52.0** - Latest OpenAI Python SDK
+- **azure-cosmos==4.8.0** - Cosmos DB SDK v2
+- **azure-storage-blob==12.24.0** - Blob Storage SDK v2
+- **azure-identity==1.19.0** - Authentication SDK v2
+
+### New Infrastructure
+- **Azure OpenAI Service**: GPT-3.5-Turbo for cost-effective grant analysis
+- **Cosmos DB**: Document and grant opportunity storage
+- **Blob Storage**: Document file storage
+- **All in ocp10 resource group (Central US)**
+
+### API Endpoints
+
+#### 1. Process Document
+```bash
+POST /api/processdocument
+{
+  "documentContent": "grant application text...",
+  "fileName": "application.pdf",
+  "fileType": "pdf"
+}
+```
+
+#### 2. Analyze Grant
+```bash
+POST /api/analyzegrant
+{
+  "grantDescription": "NSF research grant...",
+  "organizationType": "university",
+  "fundingAmount": "$500,000",
+  "deadline": "2025-03-15"
+}
+```
+
+#### 3. Get Matches
+```bash
+GET /api/getmatches?documentId=doc123&organizationType=ngo
+```
+
 ## 🔄 Next Development Steps
-- Integrate full Hugging Face transformers (currently using simple tokenization)
-- Add more document format support
-- Implement batch processing
-- Add user authentication
-- Optimize for larger documents
+- ✅ **COMPLETED**: Azure OpenAI integration with SDK v2
+- ✅ **COMPLETED**: Grant analysis and matching system
+- **TODO**: Integrate full Hugging Face transformers
+- **TODO**: Add more document format support
+- **TODO**: Frontend integration with new endpoints
+- **TODO**: Add user authentication
 
 ## 🎯 Business Goal
-Transform grant application process by providing AI-powered text analysis and tokenization for LLM-based grant writing assistance.
+Transform grant application process by providing AI-powered text analysis, grant opportunity matching, and LLM-based grant writing assistance using Azure OpenAI GPT-3.5-Turbo.

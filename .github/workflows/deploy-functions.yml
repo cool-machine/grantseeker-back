@@ -1,0 +1,82 @@
+name: Deploy Azure Functions with OpenAI Integration
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+env:
+  AZURE_FUNCTIONAPP_NAME: 'ocp10-grant-functions'
+  AZURE_FUNCTIONAPP_PACKAGE_PATH: '.'
+  PYTHON_VERSION: '3.9'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+    - name: 'Checkout GitHub Action'
+      uses: actions/checkout@v4
+
+    - name: Setup Python ${{ env.PYTHON_VERSION }} Environment
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: 'Resolve Project Dependencies Using Pip'
+      shell: bash
+      run: |
+        pushd './${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}'
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt --target=".python_packages/lib/site-packages"
+        popd
+
+    - name: 'Login to Azure'
+      uses: azure/login@v1
+      with:
+        client-id: ${{ secrets.AZURE_CLIENT_ID }}
+        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+
+    - name: 'Deploy Azure Functions'
+      uses: Azure/functions-action@v1
+      id: deploy-function
+      with:
+        app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
+        package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
+        scm-do-build-during-deployment: false
+        enable-oryx-build: false
+
+    - name: 'Configure Function App Settings'
+      shell: bash
+      run: |
+        # Set basic configuration (OpenAI settings added manually for security)
+        az functionapp config appsettings set \
+          --resource-group ocp10 \
+          --name ${{ env.AZURE_FUNCTIONAPP_NAME }} \
+          --settings \
+            "DEFAULT_MODEL=openai/gpt-oss-120b" \
+            "AZURE_OPENAI_DEPLOYMENT_NAME=gpt-35-turbo" \
+            "COSMOS_DATABASE_NAME=GrantAnalysis"
+
+    - name: 'Enable CORS for Function App'
+      shell: bash
+      run: |
+        az functionapp cors add \
+          --resource-group ocp10 \
+          --name ${{ env.AZURE_FUNCTIONAPP_NAME }} \
+          --allowed-origins "*" \
+          "https://localhost:5173" \
+          "https://*.azurestaticapps.net"
+
+    - name: 'Function URLs'
+      shell: bash
+      run: |
+        echo "🎉 Deployment completed!"
+        echo "📡 Function URLs:"
+        echo "- Tokenizer: https://${{ env.AZURE_FUNCTIONAPP_NAME }}.azurewebsites.net/api/tokenizerfunction"
+        echo "- Process Document: https://${{ env.AZURE_FUNCTIONAPP_NAME }}.azurewebsites.net/api/processdocument"
+        echo "- Analyze Grant: https://${{ env.AZURE_FUNCTIONAPP_NAME }}.azurewebsites.net/api/analyzegrant"
+        echo "- Get Matches: https://${{ env.AZURE_FUNCTIONAPP_NAME }}.azurewebsites.net/api/getmatches"
