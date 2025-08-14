@@ -2,7 +2,7 @@ import azure.functions as func
 import json
 import logging
 import os
-from azure.openai import AzureOpenAI
+from openai import AzureOpenAI
 from azure.storage.blob import BlobServiceClient
 from azure.cosmos import CosmosClient
 from azure.identity import DefaultAzureCredential

@@ -2,7 +2,7 @@ import azure.functions as func
 import json
 import logging
 import os
-from azure.openai import AzureOpenAI
+from openai import AzureOpenAI
 from azure.cosmos import CosmosClient
 
 def get_openai_client():
