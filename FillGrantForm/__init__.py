@@ -17,6 +17,165 @@ from openai import AzureOpenAI
 # PDF utilities
 from .pdf_utils import PDFFormFiller, PDFFormAnalyzer
 
+def enhance_ngo_profile(base_profile: Dict, data_sources: Dict, ngo_profile_pdf: str = None) -> Dict:
+    """
+    Enhance NGO profile with data from multiple sources
+    """
+    enhanced_profile = base_profile.copy()
+    
+    # Add source tracking
+    enhanced_profile['data_sources_used'] = []
+    
+    # Process NGO profile PDF if provided
+    if data_sources.get('has_profile_pdf') and ngo_profile_pdf:
+        try:
+            pdf_extracted_data = extract_ngo_data_from_pdf(ngo_profile_pdf)
+            if pdf_extracted_data:
+                # Merge PDF data into profile
+                for key, value in pdf_extracted_data.items():
+                    if value and (not enhanced_profile.get(key) or len(str(value)) > len(str(enhanced_profile.get(key, '')))):
+                        enhanced_profile[key] = value
+                enhanced_profile['data_sources_used'].append('profile_pdf')
+                logging.info("Enhanced NGO profile with PDF data")
+        except Exception as e:
+            logging.warning(f"Failed to extract data from NGO profile PDF: {str(e)}")
+    
+    # Process website data if provided
+    if data_sources.get('has_website') and data_sources.get('website_url'):
+        try:
+            website_data = extract_ngo_data_from_website(data_sources['website_url'])
+            if website_data:
+                # Merge website data (lower priority than PDF)
+                for key, value in website_data.items():
+                    if value and not enhanced_profile.get(key):
+                        enhanced_profile[key] = value
+                enhanced_profile['data_sources_used'].append('website')
+                logging.info("Enhanced NGO profile with website data")
+        except Exception as e:
+            logging.warning(f"Failed to extract data from website: {str(e)}")
+    
+    # Add manual entry source if no other sources
+    if not enhanced_profile.get('data_sources_used'):
+        enhanced_profile['data_sources_used'].append('manual_entry')
+    
+    return enhanced_profile
+
+def extract_ngo_data_from_pdf(pdf_data: str) -> Dict:
+    """
+    Extract NGO information from uploaded profile PDF
+    """
+    try:
+        # Decode base64 PDF
+        pdf_bytes = base64.b64decode(pdf_data)
+        
+        # Extract text using PyPDF2
+        pdf_reader = PyPDF2.PdfReader(io.BytesIO(pdf_bytes))
+        text_content = ""
+        
+        for page in pdf_reader.pages:
+            text_content += page.extract_text() + "\n"
+        
+        # Use LLM to extract structured data from text
+        client = get_openai_client()
+        if client:
+            return extract_structured_data_with_llm(text_content, "ngo_profile")
+        else:
+            # Fallback: simple keyword extraction
+            return extract_data_with_keywords(text_content)
+            
+    except Exception as e:
+        logging.error(f"Error extracting data from NGO profile PDF: {str(e)}")
+        return {}
+
+def extract_ngo_data_from_website(website_url: str) -> Dict:
+    """
+    Extract NGO information from website (placeholder for web scraping)
+    """
+    try:
+        # Note: In production, you'd use requests + BeautifulSoup or similar
+        # For now, return empty dict as web scraping needs additional dependencies
+        logging.info(f"Website data extraction from {website_url} - not implemented yet")
+        return {}
+    except Exception as e:
+        logging.error(f"Error extracting data from website {website_url}: {str(e)}")
+        return {}
+
+def extract_structured_data_with_llm(text_content: str, data_type: str) -> Dict:
+    """
+    Use LLM to extract structured data from unstructured text
+    """
+    try:
+        client = get_openai_client()
+        if not client:
+            return {}
+        
+        if data_type == "ngo_profile":
+            prompt = f"""
+            Extract the following information from this NGO document. Return only a JSON object with the specified fields.
+            If information is not found, omit the field or use null.
+            
+            Text: {text_content[:3000]}  # Limit to avoid token limits
+            
+            Extract these fields:
+            - mission: Organization's mission statement
+            - years_active: Number of years the organization has been active  
+            - focus_areas: Array of focus areas/sectors
+            - annual_budget: Annual budget in dollars (number only)
+            - recent_projects: Description of recent successful projects
+            - target_population: Who the organization serves
+            - geographic_scope: Areas where organization operates
+            - key_achievements: Notable accomplishments
+            
+            Return only valid JSON format.
+            """
+            
+            response = client.chat.completions.create(
+                model="gpt-35-turbo",
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=500,
+                temperature=0.1
+            )
+            
+            result_text = response.choices[0].message.content.strip()
+            # Try to parse as JSON
+            try:
+                return json.loads(result_text)
+            except json.JSONDecodeError:
+                logging.warning("LLM response was not valid JSON")
+                return {}
+                
+    except Exception as e:
+        logging.error(f"Error extracting structured data with LLM: {str(e)}")
+        return {}
+
+def extract_data_with_keywords(text_content: str) -> Dict:
+    """
+    Fallback: Extract data using simple keyword matching
+    """
+    extracted = {}
+    text_lower = text_content.lower()
+    
+    # Look for mission statement
+    if 'mission' in text_lower:
+        # Simple extraction - find text around 'mission' keyword
+        lines = text_content.split('\n')
+        for i, line in enumerate(lines):
+            if 'mission' in line.lower():
+                # Take next few lines as mission
+                mission_lines = lines[i:i+3]
+                extracted['mission'] = ' '.join(mission_lines).strip()[:500]
+                break
+    
+    # Look for budget information
+    import re
+    budget_matches = re.findall(r'\$[\d,]+', text_content)
+    if budget_matches:
+        # Try to extract largest dollar amount
+        amounts = [int(match.replace('$', '').replace(',', '')) for match in budget_matches]
+        extracted['annual_budget'] = max(amounts)
+    
+    return extracted
+
 def main(req: func.HttpRequest) -> func.HttpResponse:
     """
     Azure Function to fill grant forms using LLM
@@ -29,14 +188,24 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             "mission": "Helping communities",
             "years_active": 5,
             "focus_areas": ["education", "health"],
-            "annual_budget": 500000
+            "annual_budget": 500000,
+            "contact_email": "info@ngo.org",
+            "phone": "+1-555-0123",
+            "recent_projects": "Community center construction"
         },
         "grant_context": {
             "funder_name": "Example Foundation",
             "focus_area": "education",
             "max_amount": 50000,
             "requirements": "Must serve underserved communities"
-        }
+        },
+        "data_sources": {
+            "has_profile_pdf": true,
+            "has_website": false,
+            "website_url": null
+        },
+        "ngo_profile_pdf": "base64_encoded_pdf_content",  # Optional
+        "extracted_data": {}  # Optional - from PDF/website processing
     }
     """
     logging.info('Grant form filling request received')
@@ -55,6 +224,8 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         pdf_data = req_body.get('pdf_data')
         ngo_profile = req_body.get('ngo_profile', {})
         grant_context = req_body.get('grant_context', {})
+        data_sources = req_body.get('data_sources', {})
+        ngo_profile_pdf = req_body.get('ngo_profile_pdf')
         
         if not pdf_data:
             return func.HttpResponse(
@@ -63,8 +234,11 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
                 mimetype="application/json"
             )
         
+        # Enhance NGO profile with additional data sources
+        enhanced_ngo_profile = enhance_ngo_profile(ngo_profile, data_sources, ngo_profile_pdf)
+        
         # Process the grant form filling
-        result = process_grant_form(pdf_data, ngo_profile, grant_context)
+        result = process_grant_form(pdf_data, enhanced_ngo_profile, grant_context)
         
         return func.HttpResponse(
             json.dumps(result),
@@ -320,19 +494,51 @@ def generate_field_responses(classified_fields: Dict, ngo_profile: Dict, grant_c
 
 def create_field_prompt(field_name: str, field_type: str, category: str, ngo_profile: Dict, grant_context: Dict) -> str:
     """
-    Create contextual prompt for each field type
+    Create contextual prompt for each field type using enhanced NGO profile
     """
-    base_context = f"""
+    # Build comprehensive NGO context
+    ngo_context = f"""
     NGO Profile:
     - Organization: {ngo_profile.get('organization_name', 'Example NGO')}
     - Mission: {ngo_profile.get('mission', 'Helping communities')}
     - Years Active: {ngo_profile.get('years_active', 5)}
     - Focus Areas: {', '.join(ngo_profile.get('focus_areas', ['community development']))}
+    - Annual Budget: ${ngo_profile.get('annual_budget', 500000):,}"""
+    
+    # Add contact information if available
+    if ngo_profile.get('contact_email'):
+        ngo_context += f"\n    - Contact: {ngo_profile.get('contact_email')}"
+    if ngo_profile.get('phone'):
+        ngo_context += f" | {ngo_profile.get('phone')}"
+    
+    # Add recent projects if available
+    if ngo_profile.get('recent_projects'):
+        ngo_context += f"\n    - Recent Projects: {ngo_profile.get('recent_projects')}"
+    
+    # Add target population if available
+    if ngo_profile.get('target_population'):
+        ngo_context += f"\n    - Target Population: {ngo_profile.get('target_population')}"
+    
+    # Add key achievements if available
+    if ngo_profile.get('key_achievements'):
+        ngo_context += f"\n    - Key Achievements: {ngo_profile.get('key_achievements')}"
+    
+    # Add geographic scope if available
+    if ngo_profile.get('geographic_scope'):
+        ngo_context += f"\n    - Geographic Scope: {ngo_profile.get('geographic_scope')}"
+    
+    # Add data sources used for transparency
+    if ngo_profile.get('data_sources_used'):
+        ngo_context += f"\n    - Data Sources: {', '.join(ngo_profile.get('data_sources_used'))}"
+    
+    base_context = f"""
+    {ngo_context}
     
     Grant Context:
     - Funder: {grant_context.get('funder_name', 'Foundation')}
     - Focus Area: {grant_context.get('focus_area', 'community development')}
     - Max Amount: ${grant_context.get('max_amount', 50000):,}
+    - Requirements: {grant_context.get('requirements', 'N/A')}
     """
     
     # Field-specific prompts
