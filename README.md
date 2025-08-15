@@ -1,6 +1,6 @@
-# LLM-Based Grant Filler & Analysis System
+# GrantSeeker Backend - AI-Powered Grant Analysis System
 
-> AI-powered grant analysis and application assistance using Azure Functions and OpenAI
+> Backend Azure Functions API for AI-powered grant analysis, document processing, and intelligent grant matching using OpenAI GPT models
 
 ## 🎯 Overview
 
@@ -30,6 +30,11 @@ This project provides an intelligent grant analysis system that helps NGOs and r
 - **Legacy support**: Original simple tokenization for backward compatibility
 - **Multiple formats**: Support for various text processing needs
 
+### 📝 PDF Form Filling
+- **Automated form filling**: AI-powered completion of grant application forms
+- **Professional PDF generation**: Clean, structured grant applications
+- **Multi-format support**: Handles both fillable and non-fillable PDF forms
+
 ## 🏗️ Architecture
 
 ```
@@ -41,6 +46,7 @@ This project provides an intelligent grant analysis system that helps NGOs and r
                        │ • ProcessDoc     │    │ • Blob Storage  │
                        │ • AnalyzeGrant   │    │                 │
                        │ • GetMatches     │    │                 │
+                       │ • FillGrantForm  │    │                 │
                        └─────────────────┘    └─────────────────┘
 ```
 
@@ -54,12 +60,16 @@ This project provides an intelligent grant analysis system that helps NGOs and r
 
 ### 1. Clone Repository
 ```bash
-git clone https://github.com/cool-machine/llm-based-grant-filler.git
-cd llm-based-grant-filler
+git clone https://github.com/cool-machine/grantseeker-back.git
+cd grantseeker-back
 ```
 
 ### 2. Set Up Local Development
 ```bash
+# Create and activate virtual environment
+python3 -m venv venv
+source venv/bin/activate
+
 # Install dependencies
 pip install -r requirements.txt
 
@@ -196,6 +206,56 @@ GET /getmatches?documentId=doc123&organizationType=university&researchArea=AI
 }
 ```
 
+### 5. Fill Grant Form
+```http
+POST /fillgrantform
+Content-Type: application/json
+
+{
+  "pdfContent": "base64_encoded_pdf_content",
+  "fileName": "grant_form.pdf",
+  "ngoProfile": {
+    "organizationName": "Community Development Alliance",
+    "missionStatement": "Empowering underserved communities...",
+    "yearsActive": 8,
+    "focusAreas": ["education", "technology", "community development"]
+  },
+  "grantContext": {
+    "funderName": "Education Innovation Foundation",
+    "focusArea": "digital literacy",
+    "maxAmount": "$50,000",
+    "deadline": "2025-03-15"
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "filled_responses": {
+    "organization_name": "Community Development Alliance",
+    "project_title": "Digital Literacy Empowerment Initiative",
+    "project_description": "Comprehensive digital literacy program...",
+    "requested_amount": "$45,000"
+  },
+  "filled_pdf": {
+    "data": "base64_encoded_filled_pdf",
+    "filename": "filled_grant_application.pdf",
+    "content_type": "application/pdf"
+  },
+  "processing_summary": {
+    "total_fields": 8,
+    "filled_fields": 8,
+    "fill_rate": 100,
+    "pdf_generation": {
+      "success": true,
+      "method": "generated"
+    }
+  }
+}
+```
+
 ## 🛠️ Technology Stack
 
 ### Backend
@@ -306,7 +366,7 @@ curl "https://ocp10-grant-functions.azurewebsites.net/api/tokenizerfunction?text
 ## 📁 Project Structure
 
 ```
-llm-based-grant-filler/
+grantseeker-back/
 ├── TokenizerFunction/          # Original tokenization endpoint
 │   ├── __init__.py
 │   └── function.json
@@ -319,9 +379,14 @@ llm-based-grant-filler/
 ├── GetMatches/                # Intelligent grant matching
 │   ├── __init__.py
 │   └── function.json
+├── FillGrantForm/             # AI-powered PDF form filling
+│   ├── __init__.py
+│   ├── function.json
+│   └── pdf_utils.py
 ├── .github/workflows/         # GitHub Actions CI/CD
 │   └── deploy-functions.yml
 ├── tests/                     # Unit and integration tests
+├── venv/                      # Python virtual environment
 ├── requirements.txt           # Python dependencies
 ├── host.json                  # Azure Functions configuration
 ├── deploy_enhanced.sh         # Infrastructure deployment script

@@ -1,21 +1,21 @@
-# Project Memory: LLM-Based Grant Filler & Tokenizer
+# Project Memory: GrantSeeker Backend
 
 ## 🎯 Project Overview
-**Goal**: Create an Azure-based tokenization service with a web frontend for processing grant documents and extracting tokenized text for LLM applications.
+**Goal**: Create an Azure-based grant analysis and processing service with AI-powered document analysis, grant matching, and form filling capabilities.
 
 ## 📁 Repository Structure
 
-### 1. Backend (Azure Function)
-- **Repository**: `https://github.com/cool-machine/llm-based-grant-filler`  
-- **Local Path**: `/Users/gg1900/coding/ocp10`
-- **Azure Function URL**: `https://ocp10-tokenizer-function.azurewebsites.net/api/tokenizerfunction`
+### Backend (Azure Functions - grantseeker-back)
+- **Repository**: `https://github.com/cool-machine/grantseeker-back`  
+- **Local Path**: `/Users/gg1900/coding/grantseeker-back`
+- **Azure Function URL**: `https://ocp10-grant-functions.azurewebsites.net/api/`
 - **Resource Group**: `ocp10`
 - **Deployment**: Azure Functions Consumption Plan (FREE tier)
 
-### 2. Frontend (React Web App)
-- **Repository**: `https://github.com/cool-machine/ux-for-llm`
-- **Local Path**: `/Users/gg1900/coding/ux-for-llm`
-- **Deployed URL**: `https://icy-moss-0b84c880f-preview.eastus2.1.azurestaticapps.net`
+### Frontend (React Web App - grantseeker-front)
+- **Repository**: `https://github.com/cool-machine/grantseeker-front`
+- **Local Path**: `/Users/gg1900/coding/grantseeker-front`
+- **Deployed URL**: `https://cool-machine.github.io/grantseeker-front/`
 - **Deployment**: Azure Static Web Apps (FREE tier)
 
 ## 🛠️ Technology Stack
@@ -94,22 +94,33 @@ az functionapp cors add --resource-group ocp10 --name ocp10-tokenizer-function -
 ### Local Development
 ```bash
 # Backend (Azure Function)
-cd /Users/gg1900/coding/ocp10
+cd /Users/gg1900/coding/grantseeker-back
+source venv/bin/activate
 func start --port 7071
 
 # Frontend (React App)  
-cd /Users/gg1900/coding/ux-for-llm
+cd /Users/gg1900/coding/grantseeker-front
 npm run dev  # Runs on http://localhost:5173
+```
+
+### Virtual Environment Setup
+```bash
+# Setup Python virtual environment (REQUIRED after directory rename)
+cd /Users/gg1900/coding/grantseeker-back
+rm -rf venv
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
 ```
 
 ### Deployment Commands
 ```bash
 # Deploy Azure Function
-cd /Users/gg1900/coding/ocp10
-func azure functionapp publish ocp10-tokenizer-function --python --no-build
+cd /Users/gg1900/coding/grantseeker-back
+func azure functionapp publish ocp10-grant-functions --python --no-build
 
 # Deploy Static Web App
-cd /Users/gg1900/coding/ux-for-llm
+cd /Users/gg1900/coding/grantseeker-front
 npm run build
 npx @azure/static-web-apps-cli deploy --app-location ./dist --deployment-token "..."
 ```
@@ -185,7 +196,7 @@ https://ocp10-grant-functions.azurewebsites.net/api/getmatches
 - **azure-identity>=1.19.0** - Authentication SDK v2
 
 ### GitHub Actions Deployment ✅
-- **Repository**: https://github.com/cool-machine/llm-based-grant-filler
+- **Repository**: https://github.com/cool-machine/grantseeker-back
 - **Workflow**: `.github/workflows/deploy-functions.yml`
 - **Auto-deploy**: On push to main branch
 - **Authentication**: AZURE_CREDENTIALS secret (JSON format)
