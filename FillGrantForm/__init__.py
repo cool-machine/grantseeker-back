@@ -14,6 +14,9 @@ from datetime import datetime
 # For LLM integration
 from openai import AzureOpenAI
 
+# PDF utilities
+from .pdf_utils import PDFFormFiller, PDFFormAnalyzer
+
 def main(req: func.HttpRequest) -> func.HttpResponse:
     """
     Azure Function to fill grant forms using LLM
@@ -91,22 +94,46 @@ def process_grant_form(pdf_data: str, ngo_profile: Dict, grant_context: Dict) ->
         # Step 3: Generate responses using LLM
         filled_responses = generate_field_responses(classified_fields, ngo_profile, grant_context)
         
-        # Step 4: Create filled PDF (for demo, return structure)
+        # Step 4: Generate filled PDF
+        pdf_filler = PDFFormFiller()
+        pdf_success, filled_pdf_data, fill_method = pdf_filler.fill_pdf_form(pdf_data, filled_responses)
+        
+        # Step 5: Analyze original PDF structure
+        pdf_analyzer = PDFFormAnalyzer()
+        pdf_analysis = pdf_analyzer.analyze_pdf_structure(pdf_data)
+        
+        # Step 6: Create response structure
         filled_form_data = create_filled_form_structure(filled_responses)
         
-        return {
+        result = {
             "success": True,
             "original_fields": form_fields,
             "classified_fields": classified_fields,
             "filled_responses": filled_responses,
             "filled_form_structure": filled_form_data,
+            "pdf_analysis": pdf_analysis,
             "timestamp": datetime.utcnow().isoformat(),
             "processing_summary": {
                 "total_fields": len(form_fields),
                 "filled_fields": len(filled_responses),
-                "fill_rate": len(filled_responses) / max(len(form_fields), 1) * 100
+                "fill_rate": len(filled_responses) / max(len(form_fields), 1) * 100,
+                "pdf_generation": {
+                    "success": pdf_success,
+                    "method": fill_method
+                }
             }
         }
+        
+        # Add filled PDF if successful
+        if pdf_success and filled_pdf_data:
+            result["filled_pdf"] = {
+                "data": filled_pdf_data,
+                "filename": "filled_grant_application.pdf",
+                "content_type": "application/pdf",
+                "encoding": "base64"
+            }
+        
+        return result
         
     except Exception as e:
         logging.error(f"Error processing grant form: {str(e)}")
