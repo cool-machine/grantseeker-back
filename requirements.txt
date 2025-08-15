@@ -9,3 +9,6 @@ azure-identity>=1.19.0
 
 # Basic dependencies
 requests>=2.28.0
+
+# PDF processing
+PyPDF2>=3.0.0
