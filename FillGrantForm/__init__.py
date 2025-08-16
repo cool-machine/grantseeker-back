@@ -490,9 +490,9 @@ def process_grant_form(pdf_data: str, enhanced_ngo_profile: Dict, grant_context:
             "pdf_analysis": pdf_analysis,
             "timestamp": datetime.utcnow().isoformat(),
             "processing_summary": {
-                "total_fields": len(form_fields),
+                "total_fields": len(classified_fields) if classified_fields else len(filled_responses),  # Use classified fields as target
                 "filled_fields": len(filled_responses),
-                "fill_rate": len(filled_responses) / max(len(form_fields), 1) * 100,
+                "fill_rate": round((len(filled_responses) / max(len(classified_fields) if classified_fields else len(filled_responses), 1)) * 100, 1),
                 "pdf_generation": {
                     "success": pdf_success,
                     "method": fill_method
