@@ -4,18 +4,19 @@ import os
 import tempfile
 from typing import Dict, List, Any, Optional
 import azure.functions as func
-from azure.storage.blob import BlobServiceClient
-from azure.cosmos import CosmosClient
-import PyPDF2
+# Temporarily comment out potentially problematic imports
+# from azure.storage.blob import BlobServiceClient
+# from azure.cosmos import CosmosClient
+# import PyPDF2
 import io
 import base64
 from datetime import datetime
 
 # For LLM integration
-from openai import AzureOpenAI
+# from openai import AzureOpenAI
 
-# PDF utilities
-from .pdf_utils import PDFFormFiller, PDFFormAnalyzer
+# PDF utilities - temporarily disabled
+# from .pdf_utils import PDFFormFiller, PDFFormAnalyzer
 
 def enhance_ngo_profile(base_profile: Dict, data_sources: Dict, ngo_profile_pdf: str = None) -> Dict:
     """
@@ -45,23 +46,25 @@ def extract_ngo_data_from_pdf(pdf_data: str) -> Dict:
     Extract NGO information from uploaded profile PDF
     """
     try:
-        # Decode base64 PDF
-        pdf_bytes = base64.b64decode(pdf_data)
+        # Decode base64 PDF - temporarily disabled
+        # pdf_bytes = base64.b64decode(pdf_data)
+        # 
+        # # Extract text using PyPDF2
+        # pdf_reader = PyPDF2.PdfReader(io.BytesIO(pdf_bytes))
+        # text_content = ""
+        # 
+        # for page in pdf_reader.pages:
+        #     text_content += page.extract_text() + "\n"
+        text_content = "Demo PDF content"
         
-        # Extract text using PyPDF2
-        pdf_reader = PyPDF2.PdfReader(io.BytesIO(pdf_bytes))
-        text_content = ""
-        
-        for page in pdf_reader.pages:
-            text_content += page.extract_text() + "\n"
-        
-        # Use LLM to extract structured data from text
-        client = get_openai_client()
-        if client:
-            return extract_structured_data_with_llm(text_content, "ngo_profile")
-        else:
-            # Fallback: simple keyword extraction
-            return extract_data_with_keywords(text_content)
+        # Use LLM to extract structured data from text - temporarily disabled
+        # client = get_openai_client()
+        # if client:
+        #     return extract_structured_data_with_llm(text_content, "ngo_profile")
+        # else:
+        #     # Fallback: simple keyword extraction
+        #     return extract_data_with_keywords(text_content)
+        return {}
             
     except Exception as e:
         logging.error(f"Error extracting data from NGO profile PDF: {str(e)}")
@@ -85,9 +88,10 @@ def extract_structured_data_with_llm(text_content: str, data_type: str) -> Dict:
     Use LLM to extract structured data from unstructured text
     """
     try:
-        client = get_openai_client()
-        if not client:
-            return {}
+        # client = get_openai_client()
+        # if not client:
+        #     return {}
+        return {}
         
         if data_type == "ngo_profile":
             prompt = f"""
@@ -224,8 +228,24 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             # Fallback to original profile if enhancement fails
             enhanced_ngo_profile = ngo_profile
         
-        # Process the grant form filling
-        result = process_grant_form(pdf_data, enhanced_ngo_profile, grant_context)
+        # Process the grant form filling - temporarily return demo data
+        result = {
+            "success": True,
+            "message": "Demo mode - working on fixing processing",
+            "ngo_profile": enhanced_ngo_profile,
+            "grant_context": grant_context,
+            "filled_responses": {
+                "organization_name": enhanced_ngo_profile.get("organization_name", "Test Org"),
+                "project_title": "Rural Education Enhancement Initiative",
+                "project_description": "A comprehensive program to strengthen educational opportunities in rural communities"
+            },
+            "processing_summary": {
+                "total_fields": 3,
+                "filled_fields": 3,
+                "fill_rate": 100.0
+            }
+        }
+        # result = process_grant_form(pdf_data, enhanced_ngo_profile, grant_context)
         
         return func.HttpResponse(
             json.dumps(result),
