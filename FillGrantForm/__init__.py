@@ -626,11 +626,11 @@ def create_field_prompt(field_name: str, field_type: str, category: str, enhance
     
     return field_prompts.get(field_name, f"{base_context}\nProvide an appropriate response for the field '{field_name}' ({field_type}).")
 
-def generate_demo_responses(classified_fields: Dict, ngo_profile: Dict) -> Dict[str, str]:
+def generate_demo_responses(classified_fields: Dict, enhanced_ngo_profile: Dict) -> Dict[str, str]:
     """
     Generate demo responses when LLM is not available
     """
-    org_name = ngo_profile.get('organization_name', 'Community Development Alliance')
+    org_name = enhanced_ngo_profile.get('organization_name', 'Community Development Alliance')
     
     demo_responses = {
         "organization_name": org_name,
@@ -645,12 +645,12 @@ def generate_demo_responses(classified_fields: Dict, ngo_profile: Dict) -> Dict[
     
     return demo_responses
 
-def generate_fallback_response(field_name: str, field_type: str, ngo_profile: Dict) -> str:
+def generate_fallback_response(field_name: str, field_type: str, enhanced_ngo_profile: Dict) -> str:
     """
     Generate fallback response when LLM fails
     """
     fallbacks = {
-        "organization_name": ngo_profile.get('organization_name', 'NGO Name'),
+        "organization_name": enhanced_ngo_profile.get('organization_name', 'NGO Name'),
         "project_title": "Community Development Initiative",
         "requested_amount": "25000",
         "project_duration": "12 months"
