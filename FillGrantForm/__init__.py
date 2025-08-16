@@ -297,7 +297,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             mimetype="application/json"
         )
 
-def process_grant_form(pdf_data: str, ngo_profile: Dict, grant_context: Dict) -> Dict:
+def process_grant_form(pdf_data: str, enhanced_ngo_profile: Dict, grant_context: Dict) -> Dict:
     """
     Process grant form filling workflow
     """
