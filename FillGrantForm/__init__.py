@@ -15,8 +15,8 @@ from datetime import datetime
 # For LLM integration
 from openai import AzureOpenAI
 
-# PDF utilities - temporarily disable reportlab dependency
-# from .pdf_utils import PDFFormFiller, PDFFormAnalyzer
+# PDF utilities
+from .pdf_utils import PDFFormFiller, PDFFormAnalyzer
 
 def enhance_ngo_profile(base_profile: Dict, data_sources: Dict, ngo_profile_pdf: str = None) -> Dict:
     """
@@ -316,29 +316,46 @@ def process_grant_form(pdf_data: str, enhanced_ngo_profile: Dict, grant_context:
             # Fallback to demo responses if LLM fails
             filled_responses = generate_demo_responses(classified_fields, enhanced_ngo_profile)
         
-        # Step 4: Generate filled PDF - simplified version without reportlab
+        # Step 4: Generate filled PDF using proper PDF generation
         try:
-            # For now, create a simple text-based representation 
-            # TODO: Restore full PDF generation when reportlab is working
-            filled_pdf_data = create_simple_pdf_response(filled_responses)
-            pdf_success = True
-            fill_method = "Generated"
+            pdf_filler = PDFFormFiller()
+            pdf_success, filled_pdf_data, fill_method = pdf_filler.fill_pdf_form(pdf_data, filled_responses)
+            
+            if not pdf_success:
+                logging.warning(f"PDF generation failed: {fill_method}")
+                # Fallback to simple text-based PDF
+                filled_pdf_data = create_simple_pdf_response(filled_responses)
+                pdf_success = True
+                fill_method = "Text_Fallback"
+                
         except Exception as e:
             logging.error(f"Error generating PDF: {str(e)}")
-            pdf_success = False
-            filled_pdf_data = None
-            fill_method = "Failed"
+            # Fallback to simple text-based representation
+            try:
+                filled_pdf_data = create_simple_pdf_response(filled_responses)
+                pdf_success = True
+                fill_method = "Error_Fallback"
+            except Exception as fallback_error:
+                logging.error(f"Even fallback PDF generation failed: {str(fallback_error)}")
+                pdf_success = False
+                filled_pdf_data = None
+                fill_method = "Complete_Failure"
         
-        # Step 5: Analyze original PDF structure - simplified
+        # Step 5: Analyze original PDF structure
         try:
-            pdf_analysis = analyze_pdf_simple(pdf_data)
+            pdf_analysis = PDFFormAnalyzer.analyze_pdf_structure(pdf_data)
         except Exception as e:
             logging.warning(f"PDF analysis failed: {str(e)}")
-            pdf_analysis = {
-                "total_pages": 1,
-                "has_form_fields": False,
-                "form_fields": []
-            }
+            # Fallback to simple analysis
+            try:
+                pdf_analysis = analyze_pdf_simple(pdf_data)
+            except Exception as fallback_error:
+                logging.warning(f"Simple PDF analysis also failed: {str(fallback_error)}")
+                pdf_analysis = {
+                    "total_pages": 1,
+                    "has_form_fields": False,
+                    "form_fields": []
+                }
         
         # Step 6: Create response structure
         filled_form_data = create_filled_form_structure(filled_responses)
