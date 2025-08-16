@@ -235,7 +235,14 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             )
         
         # Enhance NGO profile with additional data sources
-        enhanced_ngo_profile = enhance_ngo_profile(ngo_profile, data_sources, ngo_profile_pdf)
+        try:
+            logging.info(f"Enhancing NGO profile with data sources: {data_sources}")
+            enhanced_ngo_profile = enhance_ngo_profile(ngo_profile, data_sources, ngo_profile_pdf)
+            logging.info("NGO profile enhancement completed")
+        except Exception as e:
+            logging.error(f"Error enhancing NGO profile: {str(e)}")
+            # Fallback to original profile if enhancement fails
+            enhanced_ngo_profile = ngo_profile
         
         # Process the grant form filling
         result = process_grant_form(pdf_data, enhanced_ngo_profile, grant_context)
