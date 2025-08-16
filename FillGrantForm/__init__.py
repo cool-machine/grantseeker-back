@@ -4,67 +4,84 @@ import os
 import tempfile
 from typing import Dict, List, Any, Optional
 import azure.functions as func
-# Temporarily comment out potentially problematic imports
-# from azure.storage.blob import BlobServiceClient
-# from azure.cosmos import CosmosClient
-# import PyPDF2
+from azure.storage.blob import BlobServiceClient
+from azure.cosmos import CosmosClient
+import PyPDF2
 import io
 import base64
 from datetime import datetime
 
 # For LLM integration
-# from openai import AzureOpenAI
+from openai import AzureOpenAI
 
-# PDF utilities - temporarily disabled
-# from .pdf_utils import PDFFormFiller, PDFFormAnalyzer
+# PDF utilities
+from .pdf_utils import PDFFormFiller, PDFFormAnalyzer
 
 def enhance_ngo_profile(base_profile: Dict, data_sources: Dict, ngo_profile_pdf: str = None) -> Dict:
     """
     Enhance NGO profile with data from multiple sources
     """
-    try:
-        enhanced_profile = base_profile.copy()
-        
-        # Add source tracking
-        enhanced_profile['data_sources_used'] = []
-        
-        # For now, just add manual entry source to avoid complex processing
-        # TODO: Re-enable PDF and website processing after debugging
+    enhanced_profile = base_profile.copy()
+    
+    # Add source tracking
+    enhanced_profile['data_sources_used'] = []
+    
+    # Process NGO profile PDF if provided
+    if data_sources.get('has_profile_pdf') and ngo_profile_pdf:
+        try:
+            pdf_extracted_data = extract_ngo_data_from_pdf(ngo_profile_pdf)
+            if pdf_extracted_data:
+                # Merge PDF data into profile
+                for key, value in pdf_extracted_data.items():
+                    if value and (not enhanced_profile.get(key) or len(str(value)) > len(str(enhanced_profile.get(key, '')))):
+                        enhanced_profile[key] = value
+                enhanced_profile['data_sources_used'].append('profile_pdf')
+                logging.info("Enhanced NGO profile with PDF data")
+        except Exception as e:
+            logging.warning(f"Failed to extract data from NGO profile PDF: {str(e)}")
+    
+    # Process website data if provided
+    if data_sources.get('has_website') and data_sources.get('website_url'):
+        try:
+            website_data = extract_ngo_data_from_website(data_sources['website_url'])
+            if website_data:
+                # Merge website data (lower priority than PDF)
+                for key, value in website_data.items():
+                    if value and not enhanced_profile.get(key):
+                        enhanced_profile[key] = value
+                enhanced_profile['data_sources_used'].append('website')
+                logging.info("Enhanced NGO profile with website data")
+        except Exception as e:
+            logging.warning(f"Failed to extract data from website: {str(e)}")
+    
+    # Add manual entry source if no other sources
+    if not enhanced_profile.get('data_sources_used'):
         enhanced_profile['data_sources_used'].append('manual_entry')
-        
-        logging.info(f"Enhanced profile with sources: {enhanced_profile.get('data_sources_used')}")
-        return enhanced_profile
-        
-    except Exception as e:
-        logging.error(f"Error in enhance_ngo_profile: {str(e)}")
-        # Return original profile with minimal enhancement
-        base_profile['data_sources_used'] = ['manual_entry']
-        return base_profile
+    
+    return enhanced_profile
 
 def extract_ngo_data_from_pdf(pdf_data: str) -> Dict:
     """
     Extract NGO information from uploaded profile PDF
     """
     try:
-        # Decode base64 PDF - temporarily disabled
-        # pdf_bytes = base64.b64decode(pdf_data)
-        # 
-        # # Extract text using PyPDF2
-        # pdf_reader = PyPDF2.PdfReader(io.BytesIO(pdf_bytes))
-        # text_content = ""
-        # 
-        # for page in pdf_reader.pages:
-        #     text_content += page.extract_text() + "\n"
-        text_content = "Demo PDF content"
+        # Decode base64 PDF
+        pdf_bytes = base64.b64decode(pdf_data)
         
-        # Use LLM to extract structured data from text - temporarily disabled
-        # client = get_openai_client()
-        # if client:
-        #     return extract_structured_data_with_llm(text_content, "ngo_profile")
-        # else:
-        #     # Fallback: simple keyword extraction
-        #     return extract_data_with_keywords(text_content)
-        return {}
+        # Extract text using PyPDF2
+        pdf_reader = PyPDF2.PdfReader(io.BytesIO(pdf_bytes))
+        text_content = ""
+        
+        for page in pdf_reader.pages:
+            text_content += page.extract_text() + "\n"
+        
+        # Use LLM to extract structured data from text
+        client = get_openai_client()
+        if client:
+            return extract_structured_data_with_llm(text_content, "ngo_profile")
+        else:
+            # Fallback: simple keyword extraction
+            return extract_data_with_keywords(text_content)
             
     except Exception as e:
         logging.error(f"Error extracting data from NGO profile PDF: {str(e)}")
@@ -88,10 +105,9 @@ def extract_structured_data_with_llm(text_content: str, data_type: str) -> Dict:
     Use LLM to extract structured data from unstructured text
     """
     try:
-        # client = get_openai_client()
-        # if not client:
-        #     return {}
-        return {}
+        client = get_openai_client()
+        if not client:
+            return {}
         
         if data_type == "ngo_profile":
             prompt = f"""
@@ -228,24 +244,8 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             # Fallback to original profile if enhancement fails
             enhanced_ngo_profile = ngo_profile
         
-        # Process the grant form filling - temporarily return demo data
-        result = {
-            "success": True,
-            "message": "Demo mode - working on fixing processing",
-            "ngo_profile": enhanced_ngo_profile,
-            "grant_context": grant_context,
-            "filled_responses": {
-                "organization_name": enhanced_ngo_profile.get("organization_name", "Test Org"),
-                "project_title": "Rural Education Enhancement Initiative",
-                "project_description": "A comprehensive program to strengthen educational opportunities in rural communities"
-            },
-            "processing_summary": {
-                "total_fields": 3,
-                "filled_fields": 3,
-                "fill_rate": 100.0
-            }
-        }
-        # result = process_grant_form(pdf_data, enhanced_ngo_profile, grant_context)
+        # Process the grant form filling
+        result = process_grant_form(pdf_data, enhanced_ngo_profile, grant_context)
         
         return func.HttpResponse(
             json.dumps(result),
