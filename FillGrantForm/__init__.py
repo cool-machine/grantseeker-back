@@ -510,7 +510,7 @@ def classify_form_fields(form_fields: List[Dict]) -> Dict[str, List[Dict]]:
     
     return categories
 
-def generate_field_responses(classified_fields: Dict, ngo_profile: Dict, grant_context: Dict) -> Dict[str, str]:
+def generate_field_responses(classified_fields: Dict, enhanced_ngo_profile: Dict, grant_context: Dict) -> Dict[str, str]:
     """
     Generate appropriate responses for each field using LLM
     """
@@ -521,7 +521,7 @@ def generate_field_responses(classified_fields: Dict, ngo_profile: Dict, grant_c
         client = get_openai_client()
         if not client:
             # Return demo responses if OpenAI not configured
-            return generate_demo_responses(classified_fields, ngo_profile)
+            return generate_demo_responses(classified_fields, enhanced_ngo_profile)
         
         # Process each category
         for category, fields in classified_fields.items():
@@ -530,7 +530,7 @@ def generate_field_responses(classified_fields: Dict, ngo_profile: Dict, grant_c
                 field_type = field["type"]
                 
                 # Generate contextual prompt
-                prompt = create_field_prompt(field_name, field_type, category, ngo_profile, grant_context)
+                prompt = create_field_prompt(field_name, field_type, category, enhanced_ngo_profile, grant_context)
                 
                 # Get LLM response
                 try:
@@ -548,52 +548,52 @@ def generate_field_responses(classified_fields: Dict, ngo_profile: Dict, grant_c
                     
                 except Exception as e:
                     logging.warning(f"LLM call failed for field {field_name}: {str(e)}")
-                    responses[field_name] = generate_fallback_response(field_name, field_type, ngo_profile)
+                    responses[field_name] = generate_fallback_response(field_name, field_type, enhanced_ngo_profile)
         
         return responses
         
     except Exception as e:
         logging.error(f"Error generating field responses: {str(e)}")
-        return generate_demo_responses(classified_fields, ngo_profile)
+        return generate_demo_responses(classified_fields, enhanced_ngo_profile)
 
-def create_field_prompt(field_name: str, field_type: str, category: str, ngo_profile: Dict, grant_context: Dict) -> str:
+def create_field_prompt(field_name: str, field_type: str, category: str, enhanced_ngo_profile: Dict, grant_context: Dict) -> str:
     """
     Create contextual prompt for each field type using enhanced NGO profile
     """
     # Build comprehensive NGO context
     ngo_context = f"""
     NGO Profile:
-    - Organization: {ngo_profile.get('organization_name', 'Example NGO')}
-    - Mission: {ngo_profile.get('mission', 'Helping communities')}
-    - Years Active: {ngo_profile.get('years_active', 5)}
-    - Focus Areas: {', '.join(ngo_profile.get('focus_areas', ['community development']))}
-    - Annual Budget: ${ngo_profile.get('annual_budget', 500000):,}"""
+    - Organization: {enhanced_ngo_profile.get('organization_name', 'Example NGO')}
+    - Mission: {enhanced_ngo_profile.get('mission', 'Helping communities')}
+    - Years Active: {enhanced_ngo_profile.get('years_active', 5)}
+    - Focus Areas: {', '.join(enhanced_ngo_profile.get('focus_areas', ['community development']))}
+    - Annual Budget: ${enhanced_ngo_profile.get('annual_budget', 500000):,}"""
     
     # Add contact information if available
-    if ngo_profile.get('contact_email'):
-        ngo_context += f"\n    - Contact: {ngo_profile.get('contact_email')}"
-    if ngo_profile.get('phone'):
-        ngo_context += f" | {ngo_profile.get('phone')}"
+    if enhanced_ngo_profile.get('contact_email'):
+        ngo_context += f"\n    - Contact: {enhanced_ngo_profile.get('contact_email')}"
+    if enhanced_ngo_profile.get('phone'):
+        ngo_context += f" | {enhanced_ngo_profile.get('phone')}"
     
     # Add recent projects if available
-    if ngo_profile.get('recent_projects'):
-        ngo_context += f"\n    - Recent Projects: {ngo_profile.get('recent_projects')}"
+    if enhanced_ngo_profile.get('recent_projects'):
+        ngo_context += f"\n    - Recent Projects: {enhanced_ngo_profile.get('recent_projects')}"
     
     # Add target population if available
-    if ngo_profile.get('target_population'):
-        ngo_context += f"\n    - Target Population: {ngo_profile.get('target_population')}"
+    if enhanced_ngo_profile.get('target_population'):
+        ngo_context += f"\n    - Target Population: {enhanced_ngo_profile.get('target_population')}"
     
     # Add key achievements if available
-    if ngo_profile.get('key_achievements'):
-        ngo_context += f"\n    - Key Achievements: {ngo_profile.get('key_achievements')}"
+    if enhanced_ngo_profile.get('key_achievements'):
+        ngo_context += f"\n    - Key Achievements: {enhanced_ngo_profile.get('key_achievements')}"
     
     # Add geographic scope if available
-    if ngo_profile.get('geographic_scope'):
-        ngo_context += f"\n    - Geographic Scope: {ngo_profile.get('geographic_scope')}"
+    if enhanced_ngo_profile.get('geographic_scope'):
+        ngo_context += f"\n    - Geographic Scope: {enhanced_ngo_profile.get('geographic_scope')}"
     
     # Add data sources used for transparency
-    if ngo_profile.get('data_sources_used'):
-        ngo_context += f"\n    - Data Sources: {', '.join(ngo_profile.get('data_sources_used'))}"
+    if enhanced_ngo_profile.get('data_sources_used'):
+        ngo_context += f"\n    - Data Sources: {', '.join(enhanced_ngo_profile.get('data_sources_used'))}"
     
     base_context = f"""
     {ngo_context}
