@@ -289,9 +289,9 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         )
         
     except Exception as e:
-        logging.error(f"Error in grant form filling: {str(e)}")
+        logging.error(f"Error in grant form filling: {str(e)}", exc_info=True)
         return func.HttpResponse(
-            json.dumps({"error": f"Internal server error: {str(e)}"}),
+            json.dumps({"error": f"Internal server error: {str(e)}", "type": type(e).__name__}),
             status_code=500,
             mimetype="application/json"
         )
